@@ -1,20 +1,18 @@
 # Gaze Correction Cam for Linux
 
 > **This is a Linux (Ubuntu) port** of the original macOS project
-> [WangWilly/gaze-correction-cam](https://github.com/WangWilly/gaze-correction-cam).
-> All credit for the original design, the gaze-warping models and the core idea
-> goes to the original author, [@WangWilly](https://github.com/WangWilly).
-> This port adapts the Python core to run on Linux with a `v4l2loopback`
-> virtual camera, a system-tray launcher and autostart. See the
-> [Acknowledgements](#acknowledgements) section below.
+> [WangWilly/gaze-correction-cam](https://github.com/WangWilly/gaze-correction-cam) by
+> [@WangWilly](https://github.com/WangWilly). The gaze-correction idea and the neural
+> warping models are the original author's work; this repository adapts the Python
+> core to Linux. See [Acknowledgements](#acknowledgements).
 
-> **Ubuntu port docs:** quick start in [docs/UBUNTU.md](docs/UBUNTU.md),
-> code and model analysis (Polish) in [docs/ANALIZA_PL.md](docs/ANALIZA_PL.md),
-> validation results in [docs/VALIDATION.md](docs/VALIDATION.md).
+**Make natural eye contact on every video call — on Linux.**
 
-**Make natural eye contact on every video call.**
-
-Gaze Correction Cam automatically adjusts your eye direction in real-time — so you always look directly at the people you're talking to, even when you're reading notes or looking at your own video tile. The original project ships as a macOS virtual camera extension; this port brings the same gaze-correction core to Linux.
+Gaze Correction Cam adjusts your eye direction in real time, so you always look
+directly at the people you're talking to, even when you're reading notes or looking
+at your own video tile. This port runs the correction core on Ubuntu and exposes the
+result as a **virtual camera** that Zoom, Teams, Meet and other apps can use, plus an
+optional **system-tray launcher** with autostart.
 
 <img src="https://github.com/user-attachments/assets/66e2355a-20d7-4ac5-b711-cb1b2ff653d7" style="width: 160px; display: block;">
 
@@ -24,10 +22,15 @@ Gaze Correction Cam automatically adjusts your eye direction in real-time — so
   <img src="https://img.youtube.com/vi/tOobANsNzOQ/0.jpg" style="width: 320px; display: block;">
 </a>
 
-## Quick start (Linux)
+## Requirements
 
-This port runs the gaze-correction core on Ubuntu and exposes the result as a
-virtual camera that Zoom, Teams, Meet and other apps can use.
+- Ubuntu (tested on 26.04) or a comparable Linux distribution
+- Python **3.12** (x86_64)
+- A connected webcam or built-in camera
+- `v4l2loopback` for virtual-camera output into video-call apps (installed by the
+  setup script)
+
+## Quick start
 
 ```bash
 # 1. Install dependencies and download model weights
@@ -36,7 +39,7 @@ virtual camera that Zoom, Teams, Meet and other apps can use.
 # 2. Create the virtual camera device (requires sudo, one time)
 ./scripts/setup-virtual-camera.sh
 
-# 3. Run with live preview from your webcam
+# 3. Run with a live preview from your webcam
 ./run-ubuntu.sh --camera /dev/video0
 
 # ...or stream the corrected feed into the virtual camera for video calls
@@ -45,109 +48,104 @@ virtual camera that Zoom, Teams, Meet and other apps can use.
 
 Then pick **"Gaze Correction"** as your camera in your video-call app.
 
-Optional desktop integration (tray icon + autostart):
+> Start the frame producer (`run-ubuntu.sh`) **before** opening the camera list in
+> your meeting app. The preview window shows overlays, but the virtual camera and any
+> recording receive a clean image.
+
+Full instructions, installation on another machine, and troubleshooting are in
+**[docs/UBUNTU.md](docs/UBUNTU.md)** (Polish: [docs/UBUNTU_PL.md](docs/UBUNTU_PL.md)).
+
+## Common commands
+
+```bash
+./run-ubuntu.sh --camera /dev/video2                 # pick a different webcam
+./run-ubuntu.sh --headless --max-frames 100          # no window, process 100 frames
+./run-ubuntu.sh --input in.mp4 --output out.avi --headless   # process a video file
+./run-ubuntu.sh --no-correction                      # camera-only passthrough test
+./run-ubuntu.sh --backend dlib                        # use the dlib detector
+```
+
+The output file is video only (no audio). `--fps` sets the expected camera/output
+rate but does not guarantee inference speed.
+
+## Desktop integration (tray icon + autostart)
 
 ```bash
 ./scripts/setup-desktop.sh
 ```
 
-Full instructions, troubleshooting and calibration tips are in
-[docs/UBUNTU.md](docs/UBUNTU.md).
-
-## Download (macOS, original project)
-
-**[⬇️ Download the macOS App](https://drive.google.com/file/d/1E47OZ66YPab1QuTbxN97hL2u3GYwyUbz/view?usp=drive_link)**
-
-Install the `.app`, grant camera access, and you're ready to go. The macOS app
-is provided by the original project; this repository focuses on the Linux port.
-
-## Requirements
-
-- macOS 14 (Sonoma) or later
-- A connected webcam or built-in camera
-- Camera access permission granted to the app
-
-## Getting Started
-
-1. **Download and open** the app from the link above.
-2. **Grant camera access** when prompted by macOS.
-3. **Select your camera** from the dropdown in the top-right corner of the app window.
-4. **Enable gaze correction** using the toggle in the settings panel.
-5. **Set this app as your camera** in Zoom, Teams, FaceTime, or any video app — look for **"Gaze Correction Camera"** in the camera device list.
+This installs a system-tray launcher and a login autostart entry. From the tray menu
+you can start/stop correction, open the preview with calibration, change settings
+(camera devices, resolution, FPS, calibration geometry), toggle autostart, and open
+the log. By default only the icon starts at login — enable "start camera
+automatically" in Settings if you want the correction to run on login too.
 
 ## Controls
 
+In the preview window:
+
 | Key | Action |
 | --- | ------ |
-| `g` | Toggle gaze correction on / off |
-| `c` | Toggle calibration panel |
-| `q` | Quit |
+| `g` | Toggle gaze correction on / off (watch the GAZE ON/OFF overlay) |
+| `c` | Toggle the calibration panel |
+| `q` / `Esc` | Quit |
 
 ## Calibration
 
-Press `c` to open the calibration panel and fine-tune the correction for your setup:
+Press `c` to open the calibration panel and tune the correction for your setup. The
+correction strength depends on where your camera sits relative to the screen, so the
+defaults may need adjusting.
 
 | Control | Action |
 | ------- | ------ |
-| `↑` `↓` `←` `→` | Adjust camera position up/down/left/right |
-| `+` / `-` | Adjust camera distance (closer/further) |
+| `↑` `↓` `←` `→` | Adjust camera position (X / Y) |
+| `+` / `-` | Adjust camera distance (Z) |
 | `[` / `]` | Adjust focal length |
-| `r` | Reset all values to default |
+| `r` | Reset to the values from the start of the session |
 
-> **Tip:** Start with the defaults. Only calibrate if the gaze correction looks off for your specific desk setup.
+Settings are stored in `user_settings.db`.
 
----
+> **Tip:** Start with the defaults. Calibrate only if the correction looks off, or
+> set the camera offset to match where your webcam physically sits relative to the
+> screen center (in cm).
 
-## Advanced: Build from Source / Python CLI
+## How it works
 
-If you want to run from source or use the Python CLI directly:
+1. Captures your webcam feed in real time.
+2. Detects your face and eye positions (MediaPipe by default, dlib optional).
+3. Estimates the angle your eyes need to be redirected by, from the camera/screen
+   geometry.
+4. Applies a learned neural-network warp to the eye regions to redirect your gaze.
+5. Outputs the corrected video to a window, a file, and/or a `v4l2loopback` virtual
+   camera.
 
-### Prerequisites
+The virtual-camera output is based on
+[pyvirtualcam](https://github.com/letmaik/pyvirtualcam) and
+[v4l2loopback](https://github.com/v4l2loopback/v4l2loopback).
 
-- [Python 3.12+](https://www.python.org/downloads/)
-- [Poetry](https://python-poetry.org/docs/)
-- [CMake](https://cmake.org/download/)
-- [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
-
-### Install
-
-```bash
-brew install pkg-config cmake
-poetry install
-```
-
-### Download model weights
-
-Download from [GitHub Releases](https://github.com/WangWilly/gaze-correction-cam/releases) and place in the correct directories:
-
-- `lm_feat/shape_predictor_68_face_landmarks.dat`
-- `weights/warping_model/flx/12/L/` and `.../R/` — checkpoint + weight files
-- *(Optional)* `models/face_landmarker.task` — for MediaPipe backend
-
-### Run
+## Tests
 
 ```bash
-# Default (dlib backend)
-poetry run python bin_single_window.py
-
-# MediaPipe backend
-poetry run python bin_single_window.py --backend mediapipe
-
-# Specific camera
-poetry run python bin_single_window.py --camera 1
+.venv/bin/python -m pytest -q tests
 ```
 
----
+Requires pytest installed and the models downloaded. Validation details and measured
+results are in [docs/VALIDATION.md](docs/VALIDATION.md)
+(Polish: [docs/VALIDATION_PL.md](docs/VALIDATION_PL.md)).
 
-## How It Works
+## Documentation
 
-1. Captures your webcam feed in real-time
-2. Detects your face and eye positions using computer vision
-3. Calculates where your eyes need to point to look at the camera
-4. Applies a learned neural network warp to redirect your gaze
-5. Outputs the corrected video as a virtual camera device
+- [docs/UBUNTU.md](docs/UBUNTU.md) — installation and usage (Polish: [UBUNTU_PL.md](docs/UBUNTU_PL.md))
+- [docs/VALIDATION.md](docs/VALIDATION.md) — validation and measured results (Polish: [VALIDATION_PL.md](docs/VALIDATION_PL.md))
+- [docs/architecture.md](docs/architecture.md) — architecture and module reference
+- [docs/ANALIZA_PL.md](docs/ANALIZA_PL.md) — in-depth code and model analysis (Polish)
 
----
+## Original macOS project
+
+The original project ships as a macOS virtual-camera app. If you are on macOS, use
+the upstream project directly:
+[WangWilly/gaze-correction-cam](https://github.com/WangWilly/gaze-correction-cam)
+([macOS app download](https://drive.google.com/file/d/1E47OZ66YPab1QuTbxN97hL2u3GYwyUbz/view?usp=drive_link)).
 
 ## Acknowledgements
 
@@ -157,16 +155,12 @@ This project is a **Linux port** and would not exist without the original work:
 - **Original author:** [@WangWilly](https://github.com/WangWilly)
 
 The gaze-correction idea, the neural warping models and the original macOS
-implementation are the author's work. Huge thanks for building and open-sourcing
-it. This repository only adapts the Python core to Linux (V4L2 / `v4l2loopback`
-output, a desktop tray launcher, autostart and Ubuntu setup scripts) and keeps
-the original models unchanged.
+implementation are the author's work. Huge thanks for building and open-sourcing it.
+This repository only adapts the Python core to Linux (V4L2 / `v4l2loopback` output, a
+desktop tray launcher, autostart and Ubuntu setup scripts) and keeps the original
+models unchanged.
 
 If you use this port, please also star and credit the
 [original repository](https://github.com/WangWilly/gaze-correction-cam).
 
 Licensed under the same terms as the upstream project — see [LICENSE](LICENSE).
-
----
-
-*Looking for architecture details or module documentation? See [docs/architecture.md](docs/architecture.md).*

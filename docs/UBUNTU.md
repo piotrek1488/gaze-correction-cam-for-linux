@@ -1,84 +1,132 @@
-# Ubuntu — instalacja i uruchomienie
+# Ubuntu — installation and usage
 
-Port znajduje się w `ubuntu_camera.py`. Oryginalny interfejs macOS nie jest częścią publicznego kodu; wersja Ubuntu używa okna OpenCV i kamery V4L2. Przetwarzanie odbywa się lokalnie.
+> Polish version: [UBUNTU_PL.md](UBUNTU_PL.md).
 
-## Ten komputer
+The port lives in `ubuntu_camera.py`. The original macOS interface is not part of
+the public code; the Ubuntu version uses an OpenCV window and a V4L2 camera. All
+processing happens locally.
 
-Przygotowano lokalne `.venv` z Pythonem 3.12 oraz modele. Uruchom:
+## Quick run
+
+Set up a local `.venv` (Python 3.12) and the models, then run:
 
 ```bash
 cd ~/git/gaze-correction-cam
 ./run-ubuntu.sh
 ```
 
-Domyślne wejście: `/dev/video0`, detekcja MediaPipe. `g` włącza/wyłącza korekcję, `c` otwiera kalibrację, `q` lub Escape kończy. W kalibracji strzałki zmieniają położenie kamery XY, `+/-` — Z, `[/]` — ogniskową, `r` przywraca wartości z początku sesji. Ustawienia są zapisywane w `user_settings.db`. Domyślna geometria pochodzi z upstreamu i wymaga dopasowania do monitora/laptopa.
+Default input is `/dev/video0` with the MediaPipe detector. `g` toggles correction
+on/off, `c` opens calibration, `q` or Escape quits. In calibration mode the arrow
+keys move the camera in XY, `+/-` adjusts Z, `[/]` the focal length, and `r`
+restores the values from the start of the session. Settings are stored in
+`user_settings.db`. The default geometry comes from upstream and should be tuned to
+your monitor/laptop.
 
 ```bash
 ./run-ubuntu.sh --camera /dev/video2
 ./run-ubuntu.sh --headless --max-frames 100
-./run-ubuntu.sh --input /ścieżka/wejście.mp4 --output /ścieżka/wynik.avi --headless
-./run-ubuntu.sh --no-correction  # jawny test samej kamery
+./run-ubuntu.sh --input /path/to/input.mp4 --output /path/to/result.avi --headless
+./run-ubuntu.sh --no-correction  # explicit camera-only test
 ```
 
-Plik wynikowy zawiera wyłącznie obraz, bez dźwięku. `--fps` ustawia oczekiwaną szybkość kamery/wyjścia, ale nie gwarantuje szybkości inferencji. Przy powolnym przetwarzaniu nagranie z kamery może odtwarzać się szybciej niż czas rzeczywisty. Nagrania z plików zachowują FPS źródła.
+The output file contains video only, no audio. `--fps` sets the expected
+camera/output rate but does not guarantee inference speed. When processing is slow,
+a camera recording may play back faster than real time. File recordings keep the
+source FPS.
 
-## Kamera w Zoom / Teams / przeglądarce
+## Camera in Zoom / Teams / browser
 
-Jednorazowo zainstaluj moduł dla bieżącego jądra (skrypt pyta `sudo` o hasło):
+Install the module once for the current kernel (the script asks for your `sudo`
+password):
 
 ```bash
 ./scripts/setup-virtual-camera.sh
 ./run-ubuntu.sh --virtual-camera /dev/video10
 ```
 
-W komunikatorze wybierz **Gaze Correction**. Najpierw uruchom producenta obrazu, potem otwórz listę kamer komunikatora. Podgląd zawiera napisy, lecz kamera wirtualna i nagranie otrzymują czysty obraz.
+In your meeting app, pick **Gaze Correction**. Start the frame producer first, then
+open the app's camera list. The preview shows overlays, but the virtual camera and
+the recording receive a clean image.
 
-Po restarcie moduł trzeba ponownie załadować:
+After a reboot the module must be loaded again:
 
 ```bash
 sudo modprobe v4l2loopback devices=1 video_nr=10 card_label='Gaze Correction' exclusive_caps=1
 ```
 
-Jeśli moduł jest już załadowany, `modprobe` nie zmieni jego istniejących parametrów: wybierz istniejące urządzenie loopback z `v4l2-ctl --list-devices`. Nie usuwaj modułu, gdy używa go OBS lub inny program. Numer 10 musi być wolny. Secure Boot może wymagać zapisania klucza MOK podczas instalacji DKMS. Wejście i wyjście muszą być różnymi urządzeniami.
+If the module is already loaded, `modprobe` will not change its existing
+parameters: pick the existing loopback device from `v4l2-ctl --list-devices`. Do not
+unload the module while OBS or another program is using it. Device number 10 must be
+free. Secure Boot may require enrolling a MOK key during DKMS installation. Input and
+output must be different devices.
 
-Mechanizm wyjścia oparto na [pyvirtualcam](https://github.com/letmaik/pyvirtualcam) i [v4l2loopback](https://github.com/v4l2loopback/v4l2loopback).
+The output path is based on
+[pyvirtualcam](https://github.com/letmaik/pyvirtualcam) and
+[v4l2loopback](https://github.com/v4l2loopback/v4l2loopback).
 
-## Instalacja na innym Ubuntu
+## Installing on another Ubuntu
 
-Wspierana konfiguracja zależności portu: Python **3.12**, Linux x86_64. Nie używaj systemowego Pythona 3.14 do instalacji tych przypiętych bibliotek.
+Supported dependency configuration for the port: Python **3.12**, Linux x86_64. Do
+not use the system Python 3.14 to install these pinned libraries.
 
 ```bash
 sudo apt-get install python3.12-venv libgl1 libglib2.0-0
 ./scripts/setup-ubuntu.sh
 ```
 
-Jeśli dystrybucja nie dostarcza Pythona 3.12, zainstaluj go oddzielnie, np. przez uv, i przekaż ścieżkę w `PYTHON_BIN`. Skrypt nie zmienia systemowego interpretera. Można też przygotować środowisko przez `uv venv --python 3.12 .venv`, zainstalować `requirements-ubuntu.txt` przez `uv pip install --python .venv/bin/python -r requirements-ubuntu.txt`, a następnie uruchomić `.venv/bin/python scripts/download_models.py`.
+If your distribution does not ship Python 3.12, install it separately (for example
+via uv) and pass the path in `PYTHON_BIN`. The script does not change the system
+interpreter. You can also prepare the environment with `uv venv --python 3.12 .venv`,
+install `requirements-ubuntu.txt` via
+`uv pip install --python .venv/bin/python -r requirements-ubuntu.txt`, and then run
+`.venv/bin/python scripts/download_models.py`.
 
-Główne zależności mają przypięte wersje w `requirements-ubuntu.txt`; pełny zestaw sprawdzony lokalnie zapisano w `requirements-ubuntu.lock`. Plik `poetry.lock` pochodzi z upstreamu i nie jest używany przez instalator Ubuntu.
+Core dependencies are pinned in `requirements-ubuntu.txt`; the full set verified
+locally is recorded in `requirements-ubuntu.lock`. The `poetry.lock` file comes from
+upstream and is not used by the Ubuntu installer.
 
-Domyślny backend MediaPipe nie wymaga kompilowania dlib. Backend `--backend dlib` wymaga dodatkowej instalacji dlib i `lm_feat/shape_predictor_68_face_landmarks.dat` z upstreamowego wydania v0.1.1.
+The default MediaPipe backend does not require compiling dlib. The `--backend dlib`
+option requires an extra dlib install and
+`lm_feat/shape_predictor_68_face_landmarks.dat` from the upstream v0.1.1 release.
 
-Pobieranie modeli sprawdza SHA256. Wagi korekcji pochodzą z [wydania v0.1.1](https://github.com/WangWilly/gaze-correction-cam/releases/tag/v0.1.1), a detektor z wersjonowanego magazynu modeli MediaPipe. Nie są to modele wytrenowane ponownie w ramach portu.
+Model downloads are verified against SHA256. The correction weights come from the
+[v0.1.1 release](https://github.com/WangWilly/gaze-correction-cam/releases/tag/v0.1.1),
+and the detector comes from the versioned MediaPipe model store. These are not models
+retrained as part of the port.
 
-## Diagnostyka
+## Troubleshooting
 
-- Brak obrazu: sprawdź urządzenie, uprawnienia oraz czy kamera nie jest zajęta.
-- Błąd checkpointu: uruchom `.venv/bin/python scripts/download_models.py`. Program przerywa pracę przy błędzie inferencji, zamiast pokazywać niezmieniony obraz jako działającą korekcję.
-- Brak okna: uruchom w sesji graficznej albo użyj `--headless` z wyjściem lub limitem klatek.
-- Nie instaluj jednocześnie `opencv-python`, `opencv-contrib-python` i wariantów headless w tym środowisku: współdzielą moduł `cv2`.
-- Jakość: okulary, silny obrót głowy, mruganie i duże kąty mogą powodować artefakty. Model koryguje małe wycinki oczu; nie rekonstruuje całej twarzy.
+- No image: check the device, permissions, and whether the camera is busy.
+- Checkpoint error: run `.venv/bin/python scripts/download_models.py`. The program
+  aborts on an inference error instead of showing an unchanged frame as working
+  correction.
+- No window: run inside a graphical session, or use `--headless` with an output or a
+  frame limit.
+- Do not install `opencv-python`, `opencv-contrib-python`, and headless variants at
+  the same time in this environment: they share the `cv2` module.
+- Quality: glasses, strong head rotation, blinking, and large angles can cause
+  artifacts. The model corrects small eye patches; it does not reconstruct the whole
+  face.
 
-Testy: `.venv/bin/python -m pytest -q tests`. Wymagają zainstalowanego pytest i pobranych modeli. Test checkpointów wykonuje inferencję dla obu oczu i sprawdza reakcję na zmianę kąta; nie jest oceną fotorealizmu.
+Tests: `.venv/bin/python -m pytest -q tests`. They require pytest installed and the
+models downloaded. The checkpoint test runs inference for both eyes and checks the
+response to an angle change; it is not a photorealism assessment.
 
+## Teams / Edge sees HP but not Gaze Correction
 
-## Teams / Edge widzi HP, ale nie Gaze Correction
+On this Ubuntu 26.04 / PipeWire 1.6.2 setup, WirePlumber may remember the
+`v4l2loopback` device as an output device if it scans it before the producer starts.
+In that case correct reception via OpenCV does not yet mean visibility in Teams.
 
-Na tym Ubuntu 26.04 / PipeWire 1.6.2 wykryto, że WirePlumber może zapamiętać urządzenie `v4l2loopback` jako wyjściowe, gdy zeskanuje je przed startem nadajnika. Wtedy poprawny odbiór przez OpenCV nie oznacza jeszcze widoczności w Teams.
+1. Run `./run-ubuntu.sh --virtual-camera /dev/video10` and leave the app running.
+2. In a second terminal check `wpctl status`: the camera must appear under
+   **Video → Sources**, not only under Devices.
+3. If it is not under Sources, and outside an active call, run
+   `systemctl --user restart wireplumber`. This briefly interrupts audio/video; check
+   your audio output afterwards, especially Bluetooth headphones.
+4. In Teams pick **Settings → Devices → Camera → Gaze Correction**. If the list does
+   not refresh automatically, reload the Teams tab.
+5. The site `teams.cloud.microsoft` must have the browser's camera permission.
 
-1. Uruchom `./run-ubuntu.sh --virtual-camera /dev/video10` i pozostaw aplikację działającą.
-2. W drugim terminalu sprawdź `wpctl status`: kamera musi występować w **Video → Sources**, nie tylko w Devices.
-3. Jeśli nie ma jej w Sources, poza trwającą rozmową wykonaj `systemctl --user restart wireplumber`. To na chwilę przerywa obsługę audio/wideo; sprawdź potem wyjście dźwięku, szczególnie słuchawki Bluetooth.
-4. W Teams wybierz **Ustawienia → Urządzenia → Kamera → Gaze Correction**. Jeśli lista nie odświeży się automatycznie, odśwież kartę Teams.
-5. Witryna `teams.cloud.microsoft` musi mieć zgodę przeglądarki na dostęp do kamery.
-
-Na tym komputerze potwierdzono działający lokalny podgląd w Teams. Aplikacja Python musi nadawać przez cały czas używania kamery w rozmowie.
+A working local preview in Teams was confirmed on this machine. The Python app must
+keep streaming the whole time the camera is used in a call.

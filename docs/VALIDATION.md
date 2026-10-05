@@ -1,52 +1,108 @@
-# Walidacja lokalna — 2026-10-05
+# Local validation — 2026-10-05
 
-Środowisko: Ubuntu 26.04.1 LTS, x86_64, jądro 7.0.0-34-generic, izolowany Python 3.12.15. TensorFlow 2.19.0, MediaPipe 0.10.32, OpenCV contrib 4.11.0.86, NumPy 2.1.3, pyvirtualcam 0.14.0. Pełny zestaw: `requirements-ubuntu.lock`.
+> Polish version: [VALIDATION_PL.md](VALIDATION_PL.md).
 
-## Wykonane sprawdzenia
+Environment: Ubuntu 26.04.1 LTS, x86_64, kernel 7.0.0-34-generic, isolated Python
+3.12.15. TensorFlow 2.19.0, MediaPipe 0.10.32, OpenCV contrib 4.11.0.86, NumPy 2.1.3,
+pyvirtualcam 0.14.0. Full set: `requirements-ubuntu.lock`.
 
-- `python -m pytest -q tests`: **10 testów zaliczonych**. Obejmują wycinki oczu, granice obrazu, BGR→RGB, monotoniczne timestampy, plik wejściowy/wyjściowy, błędne urządzenie, zapobieganie pętli kamery, prawdziwe checkpointy L/R, brakujące wagi, zamykanie zasobów i czyste klatki na wyjściu wirtualnym (mock).
-- Porównanie grafu z checkpointem: 59 zmiennych grafu, 140 zmiennych checkpointu, **0 niezgodności nazw/kształtów**. Nadmiarowe zmienne checkpointu nie są potrzebne grafowi inferencji.
-- Inferencja na obu rzeczywistych checkpointach daje skończone wyniki o oczekiwanym kształcie i wynik zależny od kąta; nie użyto losowych wag jako zamiennika.
-- `./run-ubuntu.sh --headless --max-frames 90`: **90 klatek**, 30,2 FPS z fizycznej kamery HP `/dev/video0`. Nie zapisywano ani nie wysyłano obrazu. Ten pomiar nie zlicza wykrytych twarzy, więc nie jest samodzielnym benchmarkiem korekcji twarzy.
-- Pełna detekcja i korekcja na publicznym `https://storage.googleapis.com/mediapipe-assets/portrait.jpg`: jedna wykryta twarz, 30 iteracji, **29,0 FPS**, 1763 zmienione piksele w ostatniej klatce. Obraz skalowany do szerokości 640 px z zachowaniem proporcji. Wynik obejrzano: zmiana dotyczy oczu, reszta obrazu pozostaje zachowana. To pojedynczy test funkcjonalny, nie ocena jakości na reprezentatywnym zbiorze.
-- Przetwarzanie 15-klatkowego filmu utworzonego z publicznego zdjęcia: **15 klatek zapisanych**, 23,7 FPS przetwarzania. `artifacts/portrait-input.avi` → `artifacts/portrait-output.avi`.
-- `./run-ubuntu.sh --max-frames 10`: uruchomienie podglądu OpenCV w sesji GNOME/Wayland przez XWayland, odczyt 10 klatek, poprawne zakończenie. Krótki test startu, nie miarodajny benchmark FPS.
-- `uv pip check`: zgodne zależności. `git diff --check` i `bash -n`: bez błędów.
-- Hashy obu pobranych modeli zweryfikowano przez `scripts/download_models.py`.
+## Checks performed
 
-## Ograniczenia walidacji
+- `python -m pytest -q tests`: **10 tests passed**. They cover eye crops, image
+  boundaries, BGR→RGB, monotonic timestamps, input/output files, an invalid device,
+  camera-loop prevention, the real L/R checkpoints, missing weights, resource cleanup,
+  and clean frames on the virtual output (mock).
+- Graph vs checkpoint comparison: 59 graph variables, 140 checkpoint variables,
+  **0 name/shape mismatches**. The extra checkpoint variables are not needed by the
+  inference graph.
+- Inference on both real checkpoints produces finite results of the expected shape and
+  an angle-dependent output; random weights were not used as a substitute.
+- `./run-ubuntu.sh --headless --max-frames 90`: **90 frames**, 30.2 FPS from the
+  physical HP camera `/dev/video0`. No image was saved or transmitted. This measurement
+  does not count detected faces, so it is not a standalone face-correction benchmark.
+- Full detection and correction on the public
+  `https://storage.googleapis.com/mediapipe-assets/portrait.jpg`: one detected face, 30
+  iterations, **29.0 FPS**, 1763 changed pixels in the last frame. The image was scaled
+  to 640 px width keeping the aspect ratio. The result was reviewed: the change is in
+  the eyes, the rest of the image is preserved. This is a single functional test, not a
+  quality assessment over a representative set.
+- Processing a 15-frame video created from the public photo: **15 frames written**,
+  23.7 FPS processing. `artifacts/portrait-input.avi` → `artifacts/portrait-output.avi`.
+- `./run-ubuntu.sh --max-frames 10`: starting the OpenCV preview in a GNOME/Wayland
+  session via XWayland, reading 10 frames, clean shutdown. A short startup test, not a
+  reliable FPS benchmark.
+- `uv pip check`: consistent dependencies. `git diff --check` and `bash -n`: no errors.
+- Both downloaded model hashes verified via `scripts/download_models.py`.
 
-Podczas pierwszej walidacji moduł `v4l2loopback` nie był dostępny dla uruchomionego jądra. `sudo -n true` zwróciło wymaganie hasła. **Nie wykonano rzeczywistego testu odbioru przez kamerę wirtualną ani Zoom/Teams/przeglądarkę.** Kod wyjścia jest sprawdzony testem interfejsu z atrapą backendu; to nie zastępuje testu sterownika. Do konfiguracji przygotowano `scripts/setup-virtual-camera.sh`.
+## Validation limitations
 
-Nie wykonano testu backendu dlib, CUDA, innych wydań Ubuntu ani długotrwałego testu stabilności. Testy inferencji działały na CPU. Biblioteka TensorFlow wypisywała komunikaty inicjalizacji CUDA/cuDNN i `cuInit 303`, ale poprawnie wykonywała inferencję CPU; nie świadczy to o działającym przyspieszeniu GPU.
+During the first validation the `v4l2loopback` module was not available for the
+running kernel. `sudo -n true` reported that a password was required. **No real test of
+reception through the virtual camera or Zoom/Teams/browser was performed.** The output
+code is covered by an interface test with a mock backend; that does not replace a
+driver test. `scripts/setup-virtual-camera.sh` was prepared for configuration.
 
-Nie testowano ręcznie każdego klawisza kalibracji. Nie wykonano pomiaru opóźnienia od ekspozycji kamery do wyświetlenia w komunikatorze. Podane FPS nie są gwarancją płynności na innych urządzeniach.
+No test of the dlib backend, CUDA, other Ubuntu releases, or long-term stability was
+performed. Inference tests ran on CPU. TensorFlow printed CUDA/cuDNN initialization
+messages and `cuInit 303`, but ran CPU inference correctly; this does not indicate
+working GPU acceleration.
 
-Artefakty z publicznego zdjęcia są w ignorowanym przez Git katalogu `artifacts/`. Żaden artefakt testowy nie zawiera nagrania użytkownika.
+Not every calibration key was tested manually. No latency measurement from camera
+exposure to display in the meeting app was performed. The reported FPS numbers are not
+a guarantee of smoothness on other devices.
 
+Artifacts from the public photo live in the Git-ignored `artifacts/` directory. No
+test artifact contains a user recording.
 
-## Dodatkowa weryfikacja po instalacji modułu przez użytkownika
+## Additional verification after the user installed the module
 
-2026-10-05, około 11:41 czasu lokalnego środowiska poleceń:
+2026-10-05, around 11:41 local command-environment time:
 
-- `v4l2loopback` jest załadowany; `v4l2-ctl --list-devices` pokazuje **Gaze Correction**, `/dev/video10`.
-- Uruchomiono rzeczywisty program z korekcją: `./run-ubuntu.sh --virtual-camera /dev/video10 --headless --max-frames 1800`.
-- Niezależny proces OpenCV otworzył `/dev/video10` przez V4L2 i odebrał **90 klatek 640×480 BGR**, około **31,0 FPS** w krótkim pomiarze. Średnia jasność klatek zmieniała się w zakresie 152,0–195,53. Nie zapisywano obrazu z kamery.
-- Podczas nadawania urządzenie zgłasza `Video Capture`, format `YU12`, 640×480, 30 FPS. Przed nadawaniem zgłaszało `Video Output`, zgodnie z trybem exclusive_caps.
-- Potwierdzono więc rzeczywisty tor aplikacja → pyvirtualcam → v4l2loopback → osobny odbiornik V4L2. Wcześniejsze ograniczenie dotyczące braku testu sterownika jest już nieaktualne.
-- **Teams nadal niezweryfikowany**: narzędzie Browser zwróciło `No browser is available`, a lista dostępnych przeglądarek była pusta. Nie wykonano połączenia ani spotkania. Test V4L2 nie stanowi potwierdzenia podglądu Teams ani negocjacji WebRTC.
+- `v4l2loopback` is loaded; `v4l2-ctl --list-devices` shows **Gaze Correction**,
+  `/dev/video10`.
+- The real program with correction was run:
+  `./run-ubuntu.sh --virtual-camera /dev/video10 --headless --max-frames 1800`.
+- An independent OpenCV process opened `/dev/video10` via V4L2 and received
+  **90 frames at 640×480 BGR**, around **31.0 FPS** in a short measurement. Mean frame
+  brightness varied between 152.0 and 195.53. No camera image was saved.
+- While streaming, the device reports `Video Capture`, format `YU12`, 640×480, 30 FPS.
+  Before streaming it reported `Video Output`, consistent with exclusive_caps mode.
+- This confirms the real path app → pyvirtualcam → v4l2loopback → a separate V4L2
+  receiver. The earlier limitation about the missing driver test no longer applies.
+- **Teams still unverified**: the Browser tool returned `No browser is available`, and
+  the list of available browsers was empty. No call or meeting was made. The V4L2 test
+  is not a confirmation of the Teams preview or WebRTC negotiation.
 
-## Próba w Teams Web / Edge — 2026-10-05, 13:26–13:30
+## Attempt in Teams Web / Edge — 2026-10-05, 13:26–13:30
 
-Po połączeniu rozszerzenia Browser otwarto zalogowany Teams (`https://teams.cloud.microsoft/`) w Edge i panel Ustawienia → Urządzenia. Pole Kamera było nieaktywne z wartością „Brak”; tak samo listy mikrofonu i głośnika. Nie było podglądu wideo. Równolegle aplikacja nadawała do `/dev/video10`, a osobny odbiornik ponownie odczytał 30 klatek 640×480. Działanie Teams nie jest więc jeszcze potwierdzone. Następny krok: ręczne sprawdzenie uprawnień witryny i odświeżenie. Próba otwarcia wewnętrznej strony ustawień Edge przez narzędzie została odrzucona przez politykę adresów Browser. Nie wykonywano połączenia ani nie dołączano do spotkania.
+After connecting the Browser extension, a signed-in Teams
+(`https://teams.cloud.microsoft/`) was opened in Edge, along with the
+Settings → Devices panel. The Camera field was inactive with the value "None"; so were
+the microphone and speaker lists. There was no video preview. In parallel the app was
+streaming to `/dev/video10`, and a separate receiver again read 30 frames at 640×480.
+Teams behavior is therefore not yet confirmed. Next step: manually check the site
+permission and refresh. An attempt to open the internal Edge settings page through the
+tool was rejected by the Browser URL policy. No call was made and no meeting was joined.
 
+## Teams Web confirmation — 2026-10-05
 
-## Potwierdzenie Teams Web — 2026-10-05
+**Result: the Gaze Correction camera preview in Teams Web works.**
 
-**Wynik: podgląd kamery Gaze Correction w Teams Web działa.**
+Tested with Edge 154.0.4258.53 and `https://teams.cloud.microsoft/` on this machine.
+After the user granted camera permission, Teams initially saw only the physical HP
+camera. `wpctl inspect` showed that WirePlumber had remembered `/dev/video10` as
+`:video_output:` before streaming started. Restarting with
+`systemctl --user restart wireplumber` while the producer was active created the
+**Gaze Correction (V4L2)** source; the camera then appeared in the Teams list.
 
-Sprawdzono Edge 154.0.4258.53 i `https://teams.cloud.microsoft/` na tym komputerze. Po udzieleniu przez użytkownika zgody na kamerę Teams widział początkowo wyłącznie fizyczną kamerę HP. `wpctl inspect` wykazał, że WirePlumber zapamiętał `/dev/video10` jako `:video_output:` przed rozpoczęciem nadawania. Restart `systemctl --user restart wireplumber` przy aktywnym nadajniku utworzył źródło **Gaze Correction (V4L2)**; kamera pojawiła się następnie na liście Teams.
+In Teams, Gaze Correction was selected, and then on the quick-meeting pre-join screen
+that entry was confirmed as selected. The local preview was enabled and "Don't use
+audio" was chosen. The image was confirmed visually, and the `video` element reported
+512×384, `readyState=4`, `paused=false`, and a playback time over 27 s. The `msedge`
+process had `/dev/video10` open in parallel with the Python producer. This confirms the
+real path app → v4l2loopback → Edge → Teams preview, not just device-name visibility.
 
-W Teams wybrano Gaze Correction, a potem na ekranie przygotowania szybkiego spotkania potwierdzono tę pozycję jako wybraną. Włączono lokalny podgląd i wybrano „Nie używaj dźwięku”. Potwierdzono wizualnie obraz, a element `video` zgłaszał 512×384, `readyState=4`, `paused=false` i czas odtwarzania ponad 27 s. Proces `msedge` miał otwarte `/dev/video10` równolegle z nadajnikiem Python. To potwierdza rzeczywisty tor aplikacja → v4l2loopback → Edge → podgląd Teams, nie tylko widoczność nazwy urządzenia.
-
-Nie klikano „Dołącz teraz”, nie wykonywano rozmowy testowej ani nie wysyłano zaproszeń. Ekran przygotowania zamknięto przyciskiem „Anuluj”. Nie testowano odbioru obrazu przez drugiego uczestnika ani jakości transmisji sieciowej. Zrzuty oglądano w narzędziu podczas testu; nie zapisano prywatnego obrazu jako pliku w repozytorium.
+"Join now" was not clicked, no test call was made, and no invitations were sent. The
+pre-join screen was closed with "Cancel". Reception by a second participant and network
+transmission quality were not tested. Screenshots were viewed in the tool during the
+test; no private image was saved as a file in the repository.
