@@ -227,7 +227,9 @@ class DlibFacePredictor(FacePredictor):
         left = int(eye_cx - bx_half_w)
         right = int(eye_cx + bx_half_w)
 
-        # Extract and validate eye region
+        # Skip incomplete crops: negative NumPy indexes wrap around the frame.
+        if top < 0 or left < 0 or bottom > frame.shape[0] or right > frame.shape[1]:
+            return None
         img_eye = frame[top:bottom, left:right]
         if img_eye.size == 0:
             return None
@@ -260,8 +262,8 @@ class DlibFacePredictor(FacePredictor):
                 ach_map = np.concatenate((ach_map, ach_map_x, ach_map_y), axis=2)
 
         return EyeData(
-            image=img_eye / 255.0,
-            anchor_map=ach_map,
+            image=img_eye.astype(np.float32) / 255.0,
+            anchor_map=ach_map.astype(np.float32),
             original_size=ori_size,
             top_left=lt_coord,
             center=eye_landmarks.center,
@@ -323,10 +325,11 @@ class MediaPipeFacePredictor(FacePredictor):
             model_path: Path to MediaPipe face landmarker model
         """
         import mediapipe as mp
-        from time import time
+        from time import monotonic
 
         self._mp = mp
-        self._start_time = time()
+        self._start_time = monotonic()
+        self._last_timestamp = -1
 
         BaseOptions = mp.tasks.BaseOptions
         FaceLandmarker = mp.tasks.vision.FaceLandmarker
@@ -349,11 +352,12 @@ class MediaPipeFacePredictor(FacePredictor):
         Returns:
             List of FaceLandmarks for each detected face
         """
-        from time import time
+        from time import monotonic
 
         h, w = bgr_frame.shape[:2]
-        mp_image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=bgr_frame)
-        timestamp_ms = int((time() - self._start_time) * 1000)
+        mp_image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB))
+        timestamp_ms = max(self._last_timestamp + 1, int((monotonic() - self._start_time) * 1000))
+        self._last_timestamp = timestamp_ms
         result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
 
         if not result.face_landmarks:
@@ -452,6 +456,8 @@ class MediaPipeFacePredictor(FacePredictor):
         left = int(eye_cx - bx_half_w)
         right = int(eye_cx + bx_half_w)
 
+        if top < 0 or left < 0 or bottom > frame.shape[0] or right > frame.shape[1]:
+            return None
         img_eye = frame[top:bottom, left:right]
         if img_eye.size == 0:
             return None
@@ -484,8 +490,8 @@ class MediaPipeFacePredictor(FacePredictor):
                 ach_map = np.concatenate((ach_map, ach_map_x, ach_map_y), axis=2)
 
         return EyeData(
-            image=img_eye / 255.0,
-            anchor_map=ach_map,
+            image=img_eye.astype(np.float32) / 255.0,
+            anchor_map=ach_map.astype(np.float32),
             original_size=ori_size,
             top_left=lt_coord,
             center=eye_landmarks.center,

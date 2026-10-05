@@ -6,6 +6,7 @@ with YAML-based configuration and database-backed user settings.
 """
 
 import math
+from pathlib import Path
 import yaml
 import numpy as np
 import tensorflow as tf
@@ -94,7 +95,11 @@ class GazeModel:
     def __init__(self, config: GazeModelConfig):
         self.cfg = config
         self.logger = Logger("GazeModel")
-        self._load_models()
+        try:
+            self._load_models()
+        except Exception:
+            self.close()
+            raise
 
     def _load_models(self):
         """Load left and right eye models."""
@@ -156,11 +161,11 @@ class GazeModel:
     def _restore_checkpoint(self, sess, model_dir: str):
         """Restore model from checkpoint."""
         saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
-        ckpt = tf.compat.v1.train.get_checkpoint_state(model_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-        else:
-            self.logger.log(f"Warning: No checkpoint found in {model_dir}")
+        directory = Path(model_dir)
+        prefix = directory / directory.name
+        if not prefix.with_suffix(".index").is_file():
+            raise FileNotFoundError(f"Missing trained checkpoint: {prefix}. Run scripts/download_models.py")
+        saver.restore(sess, str(prefix))
 
     def infer_eye(
         self, eye: str, img: np.ndarray, anchor_map: np.ndarray, angle: list
@@ -199,8 +204,10 @@ class GazeModel:
 
     def close(self):
         """Close TensorFlow sessions."""
-        self.l_sess.close()
-        self.r_sess.close()
+        for name in ("l_sess", "r_sess"):
+            session = getattr(self, name, None)
+            if session is not None:
+                session.close()
 
 
 ################################################################################
@@ -327,6 +334,8 @@ class GazeCorrector:
         Args:
             focal_length: Focal length in pixels (typically 500-1000)
         """
+        if not math.isfinite(focal_length) or focal_length <= 0:
+            raise ValueError("Focal length must be positive")
         self.camera_settings.focal_length = focal_length
         self.save_camera_settings()
         self.logger.log(f"Focal length set to: {focal_length:.1f}")
@@ -341,8 +350,7 @@ class GazeCorrector:
         Returns:
             New focal length
         """
-        self.camera_settings.focal_length += delta
-        self.save_camera_settings()
+        self.set_focal_length(max(10.0, self.camera_settings.focal_length + delta))
         return self.camera_settings.focal_length
 
     ############################################################################
@@ -391,6 +399,8 @@ class GazeCorrector:
         ipd_pixels = np.sqrt(
             (le_center[0] - re_center[0]) ** 2 + (le_center[1] - re_center[1]) ** 2
         )
+        if not np.isfinite(ipd_pixels) or ipd_pixels < 1:
+            raise ValueError("Eye centers must be distinct and finite")
         eye_z = -(settings.focal_length * settings.ipd) / ipd_pixels
 
         # Estimate eye position in 3D (camera coordinates, cm)

@@ -83,10 +83,10 @@ class SingleWindowGazeCorrector:
     # KEY_DOWN = 84
     # KEY_LEFT = 81
     # KEY_RIGHT = 83
-    KEY_UP = 0
-    KEY_DOWN = 1
-    KEY_LEFT = 2
-    KEY_RIGHT = 3
+    KEY_UP = 65362
+    KEY_DOWN = 65364
+    KEY_LEFT = 65361
+    KEY_RIGHT = 65363
 
     def __init__(
         self,
@@ -333,13 +333,9 @@ class SingleWindowGazeCorrector:
 
         # Process first detected face
         for face_data in face_data_list:
-            try:
-                # Apply gaze correction (pass video_size)
-                display_frame = self.gaze_corrector.apply_correction(
-                    display_frame, face_data, self.display_cfg.video_size
-                )
-            except Exception as e:
-                self.logger.log(f"Error: {e}")
+            display_frame = self.gaze_corrector.apply_correction(
+                display_frame, face_data, (frame.shape[1], frame.shape[0])
+            )
             break  # Only process first face
 
         return display_frame
@@ -373,7 +369,7 @@ class SingleWindowGazeCorrector:
 
             cv2.imshow(self.display_cfg.window_name, display_frame)
 
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKeyEx(1)
             if key == ord("q"):
                 break
             elif key == ord("g"):

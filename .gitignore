@@ -9,3 +9,13 @@ weights.zip
 
 # User settings database
 user_settings.db
+
+.venv/
+.bootstrap/
+.python/
+.cache/
+.downloads/
+.pytest_cache/
+artifacts/
+
+.desktop-deps/
