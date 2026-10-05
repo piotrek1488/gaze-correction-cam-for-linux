@@ -1,5 +1,6 @@
 # Architecture & Module Documentation
 
+> Polish version: [architecture_PL.md](architecture_PL.md).
 > Developer reference for the Gaze Correction Camera system.
 > For user-facing setup and usage, see the [README](../README.md).
 

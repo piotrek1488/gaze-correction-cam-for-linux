@@ -1,3 +1,5 @@
+> Polish version: [orignal_doc_PL.md](orignal_doc_PL.md).
+
 Correcting gaze by warping-based convolutional neural network.
 # Paper
 @article{Hsu:2019:LMC:3339884.3311784,<br />

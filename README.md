@@ -137,8 +137,9 @@ results are in [docs/VALIDATION.md](docs/VALIDATION.md)
 
 - [docs/UBUNTU.md](docs/UBUNTU.md) — installation and usage (Polish: [UBUNTU_PL.md](docs/UBUNTU_PL.md))
 - [docs/VALIDATION.md](docs/VALIDATION.md) — validation and measured results (Polish: [VALIDATION_PL.md](docs/VALIDATION_PL.md))
-- [docs/architecture.md](docs/architecture.md) — architecture and module reference
-- [docs/ANALIZA_PL.md](docs/ANALIZA_PL.md) — in-depth code and model analysis (Polish)
+- [docs/architecture.md](docs/architecture.md) — architecture and module reference (Polish: [architecture_PL.md](docs/architecture_PL.md))
+- [docs/ANALYSIS_EN.md](docs/ANALYSIS_EN.md) — in-depth code and model analysis (Polish: [ANALIZA_PL.md](docs/ANALIZA_PL.md))
+- [docs/orignal_doc.md](docs/orignal_doc.md) — original upstream documentation (Polish: [orignal_doc_PL.md](docs/orignal_doc_PL.md))
 
 ## Original macOS project
 

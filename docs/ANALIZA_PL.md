@@ -1,5 +1,7 @@
 # Analiza gaze-correction-cam i portu Ubuntu
 
+> Wersja angielska: [ANALYSIS_EN.md](ANALYSIS_EN.md).
+
 Stan analizy: 2026-10-05. Punkt odniesienia: upstream `a94ec59` (pełny hash: `git rev-parse HEAD`). Zmiany portu pozostawiono lokalnie do przeglądu; nie publikowano ich w repozytorium autora.
 
 ## 1. Co faktycznie udostępnia repozytorium
