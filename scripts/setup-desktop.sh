@@ -18,4 +18,5 @@ if ! /usr/bin/python3 -c "import gi; gi.require_version('AyatanaAppIndicator3','
     done
 fi
 /usr/bin/python3 scripts/install-desktop.py
-exec ./run-tray.sh
+# Launch detached so the setup script returns the terminal instead of blocking.
+exec ./run-tray.sh --background

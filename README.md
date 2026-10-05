@@ -74,11 +74,21 @@ rate but does not guarantee inference speed.
 ./scripts/setup-desktop.sh
 ```
 
-This installs a system-tray launcher and a login autostart entry. From the tray menu
-you can start/stop correction, open the preview with calibration, change settings
-(camera devices, resolution, FPS, calibration geometry), toggle autostart, and open
-the log. By default only the icon starts at login — enable "start camera
-automatically" in Settings if you want the correction to run on login too.
+This installs a system-tray launcher and a login autostart entry, then starts the
+tray detached from the terminal. From the tray menu you can start/stop correction,
+open the preview with calibration, change settings (camera devices, resolution, FPS,
+calibration geometry), toggle autostart, and open the log. By default only the icon
+starts at login — enable "start camera automatically" in Settings if you want the
+correction to run on login too.
+
+To start the tray manually without blocking your terminal, run it in the background:
+
+```bash
+./run-tray.sh --background
+```
+
+Without `--background` the tray runs in the foreground (which is what the autostart
+entry uses).
 
 ## Controls
 
