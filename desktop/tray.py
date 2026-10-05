@@ -16,6 +16,31 @@ from gi.repository import Gtk, Gio, GLib, AyatanaAppIndicator3 as Indicator
 from desktop.control import Worker, ROOT, CONFIG_DIR, STATE_DIR, load_settings, atomic_json, validate, set_autostart, autostart_enabled
 from model_managers.user_settings_db import UserSettingsDB
 
+# Prefer the non-deprecated GLibUnix.signal_add when available (newer PyGObject),
+# and fall back to GLib.unix_signal_add on older systems.
+try:
+    gi.require_version('GLibUnix', '2.0')
+    from gi.repository import GLibUnix
+    _unix_signal_add = GLibUnix.signal_add
+except (ValueError, ImportError):
+    _unix_signal_add = GLib.unix_signal_add
+
+# libayatana-appindicator (the GTK3 build) prints a one-time deprecation warning
+# on startup. The non-deprecated libayatana-appindicator-glib typelib is not
+# installed here, so silence just that message instead of spamming stderr.
+def _filter_appindicator_warning(domain, level, message, _user_data):
+    if message and 'libayatana-appindicator is deprecated' in message:
+        return
+    GLib.log_default_handler(domain, level, message, None)
+
+
+GLib.log_set_handler(
+    'libayatana-appindicator',
+    GLib.LogLevelFlags.LEVEL_WARNING | GLib.LogLevelFlags.LEVEL_MESSAGE,
+    _filter_appindicator_warning,
+    None,
+)
+
 
 class Tray(Gtk.Application):
     def __init__(self):
@@ -62,8 +87,8 @@ class Tray(Gtk.Application):
         menu.show_all()
         self.indicator.set_menu(menu)
         GLib.timeout_add(500, self.tick)
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.exit_app)
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.exit_app)
+        _unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, self.exit_app)
+        _unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.exit_app)
         if self.settings['auto_camera']:
             self.start(False)
 
